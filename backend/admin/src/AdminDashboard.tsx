@@ -332,10 +332,10 @@ export default function AdminDashboard() {
     (data: AdminUpdatePayload) => {
       const nextRecords: RecordRow[] | null = Array.isArray(data.records) ? sortRecords(data.records as RecordRow[]) : null;
       const nextOnline: OnlineUser[] | null = Array.isArray(data.onlineUsers) ? (data.onlineUsers as OnlineUser[]) : null;
-      const stepDone = Number(data.stats?.stepDone || 0);
-      const stepTotal = Number(data.stats?.stepTotal || 0);
+      const visits = Number(data.stats?.visits || 0);
+      const clicks = Number(data.stats?.clicks || 0);
       const clickRate = Number(data.stats?.clickRate || 0);
-      setClickRateLabel(`${clickRate.toFixed(1)}% (${stepDone}/${stepTotal})`);
+      setClickRateLabel(`${clicks}/${visits} (${clickRate.toFixed(1)}%)`);
 
       if (viewLockedRef.current) {
         if (nextRecords) {
