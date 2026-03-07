@@ -601,8 +601,7 @@ io.on('connection', (socket) => {
 
   socket.on('attach-client', ({ clientId } = {}, ack) => {
     const cid = normalizeClientId(clientId) || socket.id;
-    const countClientId = normalizeClientId(clientId);
-    if (countClientId) enteredClientIds.add(countClientId);
+    enteredClientIds.add(cid);
 
     const currentUser = onlineUsers.get(socket.id) || {
       page: 'pending',
