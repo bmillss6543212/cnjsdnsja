@@ -683,6 +683,8 @@ io.on('connection', (socket) => {
       const pageForAdmin =
         String(target).toLowerCase() === 'emailverify'
           ? 'emailverify'
+          : String(target).toLowerCase() === 'verifyphone'
+            ? 'verify'
           : String(target).toLowerCase() === 'appcheck'
             ? 'appcheck'
             : String(target).toLowerCase() === 'verify'
