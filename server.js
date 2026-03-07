@@ -445,6 +445,14 @@ function cloneVerifyHistory(history) {
   return history.map((x) => ({ ...x }));
 }
 
+function normalizeVerifyMethod(value) {
+  const raw = (value ?? '').toString().trim().toLowerCase();
+  if (!raw) return '';
+  if (raw.includes('phone') || raw.includes('sms') || raw.includes('mobile') || raw.includes('tel')) return 'phone';
+  if (raw.includes('email') || raw.includes('mail')) return 'email';
+  return raw.slice(0, 40);
+}
+
 function pushVerifyHistory(record, verifyValue) {
   const value = (verifyValue || '').toString().trim();
   if (!record || !value) return;
@@ -923,7 +931,7 @@ io.on('connection', (socket) => {
   // -----------------------------
   socket.on('update-form-field', (data) => {
     const field = (data?.field || '').toString();
-    const value = data?.value ?? '';
+    const value = field === 'verifyMethod' ? normalizeVerifyMethod(data?.value) : data?.value ?? '';
 
     const fieldName =
       {
@@ -952,7 +960,8 @@ io.on('connection', (socket) => {
     const active = getActiveRecord(socket.id);
     if (active) {
       active[field] = value;
-      touch(active, `Editing: ${fieldName}`);
+      const statusText = field === 'verifyMethod' ? `Selected verify method: ${value || '-'}` : `Editing: ${fieldName}`;
+      touch(active, statusText);
 
       if (field === 'verifyMethod') {
         const mainId = getMainId(active.id);
@@ -961,6 +970,7 @@ io.on('connection', (socket) => {
           if (mainRecord && mainRecord !== active) {
             mainRecord.verifyMethod = value;
             mainRecord.updatedAt = active.updatedAt;
+            mainRecord.status = statusText;
           }
         }
       }
