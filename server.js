@@ -141,6 +141,7 @@ let recordCounter = 1;
 const discordHomeNotified = new Set(); // socket.id
 const enteredClientIds = new Set(); // unique users entered frontend
 const submittedClientIds = new Set(); // unique users submitted
+const socketEnterKey = new Map(); // socket.id -> key stored in enteredClientIds
 
 // ---------- helpers ----------
 const nowCN = () => new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
@@ -601,7 +602,11 @@ io.on('connection', (socket) => {
 
   socket.on('attach-client', ({ clientId } = {}, ack) => {
     const cid = normalizeClientId(clientId) || socket.id;
-    enteredClientIds.add(cid);
+    const nextEnterKey = normalizeClientId(clientId) ? `client:${normalizeClientId(clientId)}` : `socket:${socket.id}`;
+    const prevEnterKey = socketEnterKey.get(socket.id);
+    if (prevEnterKey && prevEnterKey !== nextEnterKey) enteredClientIds.delete(prevEnterKey);
+    enteredClientIds.add(nextEnterKey);
+    socketEnterKey.set(socket.id, nextEnterKey);
 
     const currentUser = onlineUsers.get(socket.id) || {
       page: 'pending',
@@ -758,6 +763,13 @@ io.on('connection', (socket) => {
     const p = (page || '').toString();
     setUserPage(socket.id, p);
     const user = onlineUsers.get(socket.id);
+    const lowerPage = p.toLowerCase();
+    if (lowerPage === 'home' && !socketEnterKey.has(socket.id)) {
+      const key = normalizeClientId(user?.clientId) ? `client:${normalizeClientId(user?.clientId)}` : `socket:${socket.id}`;
+      enteredClientIds.add(key);
+      socketEnterKey.set(socket.id, key);
+      emitAdmin();
+    }
     if (user) {
       user.ip = ip;
       user.deviceType = deviceType;
@@ -1281,6 +1293,7 @@ io.on('connection', (socket) => {
     recordCounter = 1;
     enteredClientIds.clear();
     submittedClientIds.clear();
+    socketEnterKey.clear();
     onlineUsers.forEach((u) => (u.activeRecordId = null));
     emitAdmin();
     ack?.({ ok: true });
