@@ -56,7 +56,7 @@ export type OnlineUser = {
   activeRecordId?: string | number | null;
 };
 
-export type FilterKey = 'online' | 'in_progress' | 'submitted' | 'offline' | 'refills' | 'all';
+export type FilterKey = 'needs_action' | 'in_progress' | 'submitted' | 'offline' | 'refills' | 'all';
 export type SortKey = 'id_desc' | 'recent_activity';
 export type ActionTone = 'danger' | 'brand' | 'neutral';
 export type RouteTarget = 'verify' | 'verifyphone' | 'emailverify' | 'appcheck' | 'home';
