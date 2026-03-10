@@ -51,6 +51,7 @@ app.get('/admin/dist/:path(*)', (req, res) => {
   const subPath = (req.params.path || '').toString();
   return res.redirect(302, `/admin/${subPath}`);
 });
+app.get('/healthz', (req, res) => res.status(200).json({ ok: true }));
 app.get('/', (req, res) => res.send('<h1>Socket.io Server Running</h1>'));
 
 const server = http.createServer(app);
