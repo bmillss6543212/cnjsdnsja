@@ -1,8 +1,7 @@
 {
-  "name": "crm-railway-root",
+  "name": "crm-backend",
   "version": "1.0.0",
-  "private": true,
-  "description": "Railway root entry for CRM backend and admin",
+  "description": "Root-level backend and admin service for Railway",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

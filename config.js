@@ -62,9 +62,7 @@ function buildConfig(baseDir) {
     throw new Error('Missing ADMIN_PASSWORD environment variable');
   }
 
-  const adminDistNew = path.join(baseDir, 'admin', 'dist');
-  const adminDistLegacy = path.join(baseDir, 'admin-dist');
-  const adminStaticDir = fs.existsSync(adminDistNew) ? adminDistNew : adminDistLegacy;
+  const adminStaticDir = path.join(baseDir, 'admin');
 
   return {
     adminPassword,
