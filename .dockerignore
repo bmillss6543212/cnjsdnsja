@@ -1,0 +1,11 @@
+.git
+node_modules
+backend
+tmp
+run-logs
+publish_root_repo
+vercel_admin_repo
+tmp_frontend_static_repo
+tmp_static_push
+tmp_static_push_frontend
+tmp_uytrw_push2
