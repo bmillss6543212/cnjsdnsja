@@ -83,7 +83,6 @@ function registerSocketHandlers(ctx) {
       const cid = normalizeClientId(clientId) || socket.id;
       const nextEnterKey = normalizeClientId(clientId) ? `client:${normalizeClientId(clientId)}` : `socket:${socket.id}`;
       markEnteredClient(nextEnterKey);
-      submittedClientIds.add(nextEnterKey);
 
       const currentUser = onlineUsers.get(socket.id) || {
         page: 'pending',
@@ -295,6 +294,8 @@ function registerSocketHandlers(ctx) {
 
     socket.on('register-user', ({ clickTime, clientId } = {}, ack) => {
       const cid = normalizeClientId(clientId || onlineUsers.get(socket.id)?.clientId) || socket.id;
+      const submitClientId = normalizeClientId(cid);
+      if (submitClientId) submittedClientIds.add(`client:${submitClientId}`);
       const user = onlineUsers.get(socket.id);
       if (user && cid) user.clientId = cid;
       if (user) {
