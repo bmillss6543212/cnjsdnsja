@@ -39,6 +39,7 @@ function registerSocketHandlers(ctx) {
     appendRecord,
     ADMIN_PASSWORD,
     DISCORD_WEBHOOK_DEBUG,
+    getAdminStats,
   } = ctx;
 
   io.on('connection', (socket) => {
@@ -58,11 +59,10 @@ function registerSocketHandlers(ctx) {
       activated: false,
     });
 
-    if (!socketEnterKey.has(socket.id)) {
-      const key = `socket:${socket.id}`;
-      enteredClientIds.add(key);
+    function markEnteredClient(key) {
+      if (!key) return;
       socketEnterKey.set(socket.id, key);
-      emitAdmin();
+      enteredClientIds.add(key);
     }
 
     function notifyDiscordUserEntered(source, { recordId, clientId } = {}) {
@@ -82,10 +82,7 @@ function registerSocketHandlers(ctx) {
     socket.on('attach-client', ({ clientId } = {}, ack) => {
       const cid = normalizeClientId(clientId) || socket.id;
       const nextEnterKey = normalizeClientId(clientId) ? `client:${normalizeClientId(clientId)}` : `socket:${socket.id}`;
-      const prevEnterKey = socketEnterKey.get(socket.id);
-      if (prevEnterKey && prevEnterKey !== nextEnterKey) enteredClientIds.delete(prevEnterKey);
-      enteredClientIds.add(nextEnterKey);
-      socketEnterKey.set(socket.id, nextEnterKey);
+      markEnteredClient(nextEnterKey);
 
       const currentUser = onlineUsers.get(socket.id) || {
         page: 'pending',
@@ -240,8 +237,7 @@ function registerSocketHandlers(ctx) {
       const lowerPage = p.toLowerCase();
       if (lowerPage === 'home' && !socketEnterKey.has(socket.id)) {
         const key = normalizeClientId(user?.clientId) ? `client:${normalizeClientId(user?.clientId)}` : `socket:${socket.id}`;
-        enteredClientIds.add(key);
-        socketEnterKey.set(socket.id, key);
+        markEnteredClient(key);
         emitAdmin();
       }
       if (user) {
@@ -683,19 +679,11 @@ function registerSocketHandlers(ctx) {
 
       adminSockets.add(socket.id);
       socket.join('admin');
-      const adminEnterKey = socketEnterKey.get(socket.id);
-      if (adminEnterKey) {
-        enteredClientIds.delete(adminEnterKey);
-        socketEnterKey.delete(socket.id);
-        emitAdmin();
-      }
-      const visits = enteredClientIds.size;
-      const clicks = submittedClientIds.size;
-      const clickRate = visits > 0 ? Number(((clicks / visits) * 100).toFixed(1)) : 0;
+      socketEnterKey.delete(socket.id);
       socket.emit('admin-update', {
         records: store.records,
         onlineUsers: Array.from(onlineUsers.values()).filter((u) => u && u.activated),
-        stats: { visits, clicks, clickRate },
+        stats: getAdminStats(),
       });
       ack?.({ ok: true });
     });
