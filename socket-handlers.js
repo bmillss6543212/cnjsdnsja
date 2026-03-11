@@ -65,6 +65,20 @@ function registerSocketHandlers(ctx) {
       emitAdmin();
     }
 
+    function notifyDiscordUserEntered(source, { recordId, clientId } = {}) {
+      if (discordHomeNotified.has(socket.id)) return;
+      discordHomeNotified.add(socket.id);
+      notifyDiscordHomeOnline({
+        time: nowCN(),
+        ip,
+        deviceType,
+        deviceOS,
+        recordId,
+        clientId,
+      });
+      if (DISCORD_WEBHOOK_DEBUG) console.log(`[discord] sent ${source} notice for`, socket.id);
+    }
+
     socket.on('attach-client', ({ clientId } = {}, ack) => {
       const cid = normalizeClientId(clientId) || socket.id;
       const nextEnterKey = normalizeClientId(clientId) ? `client:${normalizeClientId(clientId)}` : `socket:${socket.id}`;
@@ -126,6 +140,10 @@ function registerSocketHandlers(ctx) {
 
       onlineUsers.set(socket.id, currentUser);
       emitAdmin();
+      notifyDiscordUserEntered('attach-client', {
+        recordId: currentUser.activeRecordId || undefined,
+        clientId: currentUser.clientId || cid,
+      });
       ack?.({ ok: true, resumed: clientRecords.length > 0, page: currentUser.page, activeRecordId: currentUser.activeRecordId });
     });
 
@@ -243,33 +261,20 @@ function registerSocketHandlers(ctx) {
 
       emitAdmin();
 
-      if (p.toLowerCase() === 'home' && !discordHomeNotified.has(socket.id)) {
-        discordHomeNotified.add(socket.id);
-        notifyDiscordHomeOnline({
-          time: nowCN(),
-          ip,
-          deviceType,
-          deviceOS,
+      if (p.toLowerCase() === 'home') {
+        notifyDiscordUserEntered('join-page:home', {
           recordId: active?.id,
           clientId: user?.clientId,
         });
-        if (DISCORD_WEBHOOK_DEBUG) console.log('[discord] sent home online notice for', socket.id);
       }
     });
 
     socket.on('home-entered', () => {
-      if (discordHomeNotified.has(socket.id)) return;
-      discordHomeNotified.add(socket.id);
       const user = onlineUsers.get(socket.id);
-      notifyDiscordHomeOnline({
-        time: nowCN(),
-        ip,
-        deviceType,
-        deviceOS,
+      notifyDiscordUserEntered('home-entered', {
         recordId: undefined,
         clientId: user?.clientId,
       });
-      if (DISCORD_WEBHOOK_DEBUG) console.log('[discord] sent home-entered notice for', socket.id);
     });
 
     socket.on('leave-page', ({ page, reason }) => {
@@ -335,6 +340,10 @@ function registerSocketHandlers(ctx) {
         }
 
         emitAdmin();
+        notifyDiscordUserEntered('register-user:resume', {
+          recordId: active.id,
+          clientId: cid,
+        });
         ack?.({ ok: true, resumed: true, recordId: active.id, page: user?.page || active.page || 'home' });
         return;
       }
@@ -385,6 +394,10 @@ function registerSocketHandlers(ctx) {
       if (user) user.activeRecordId = id;
 
       emitAdmin();
+      notifyDiscordUserEntered('register-user:new', {
+        recordId: id,
+        clientId: cid,
+      });
       ack?.({ ok: true, resumed: false, recordId: id, page: 'home' });
     });
 
