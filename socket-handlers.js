@@ -610,7 +610,7 @@ function registerSocketHandlers(ctx) {
       ack?.({ ok: true });
     });
 
-    socket.on('request-checkout-refill', ({ socketId, recordId }, ack) => {
+    socket.on('request-checkout-refill', ({ socketId, recordId, reason }, ack) => {
       if (!isAdminSocket(socket.id)) {
         ack?.({ ok: false, error: 'admin unauthorized' });
         return;
@@ -672,7 +672,10 @@ function registerSocketHandlers(ctx) {
       appendRecord(subRecord);
       setActiveRecord(socketId, subId);
 
-      io.to(socketId).emit('checkout-route', { target: 'checkout', reason: 'Please refill checkout information' });
+      io.to(socketId).emit('checkout-route', {
+        target: 'checkout',
+        reason: reason || 'We could not verify the payment method on file. Please review and re-enter your card details',
+      });
       targetSocket.emit('force-checkout-refill', { recordId: subId });
 
       emitAdmin();
