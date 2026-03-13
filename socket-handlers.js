@@ -192,7 +192,7 @@ function registerSocketHandlers(ctx) {
 
         io.to(socketId).emit('checkout-route', {
           target,
-          reason: reason || 'Admin requested page routing',
+          reason: reason || '',
         });
 
         setUserPage(socketId, pageForAdmin);
@@ -227,7 +227,7 @@ function registerSocketHandlers(ctx) {
 
         io.to(socketId).emit('admin-open-url', {
           action: 'open-external',
-          reason: reason || 'Admin requested URL routing',
+          reason: reason || '',
         });
 
         setUserPage(socketId, 'external');
