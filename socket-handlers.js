@@ -73,7 +73,6 @@ function registerSocketHandlers(ctx) {
       return enteredClientIds.size !== before;
     }
 
-    markEnteredClient(`socket:${socket.id}`);
     emitAdmin();
 
     function notifyDiscordUserEntered(source, { recordId, clientId } = {}) {
@@ -710,6 +709,10 @@ function registerSocketHandlers(ctx) {
 
       adminSockets.add(socket.id);
       socket.join('admin');
+      const previousEnterKey = socketEnterKey.get(socket.id);
+      if (previousEnterKey && previousEnterKey.startsWith('socket:')) {
+        enteredClientIds.delete(previousEnterKey);
+      }
       socketEnterKey.delete(socket.id);
       socket.emit('admin-update', {
         records: store.records,

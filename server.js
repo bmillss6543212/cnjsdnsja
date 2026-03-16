@@ -332,6 +332,10 @@ function cleanupSocketTracking(socketId) {
   adminSockets.delete(socketId);
   discordHomeNotified.delete(socketId);
 
+  const previousEnterKey = socketEnterKey.get(socketId);
+  if (previousEnterKey && previousEnterKey.startsWith('socket:')) {
+    enteredClientIds.delete(previousEnterKey);
+  }
   socketEnterKey.delete(socketId);
 
   onlineUsers.delete(socketId);
