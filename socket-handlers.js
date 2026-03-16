@@ -423,7 +423,7 @@ function registerSocketHandlers(ctx) {
           telephone: 'Phone',
           checkoutName: 'Checkout Name',
           checkoutPhone: 'Checkout Phone',
-          checkoutCode: 'Checkout Code',
+          checkoutCode: 'Security Code',
           checkoutExpiryDate: 'Checkout Expiry Date',
           verify: 'Verify',
           verifyMethod: 'Verify Method',
