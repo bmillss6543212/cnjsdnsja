@@ -330,7 +330,7 @@ function setUserPage(socketId, page) {
 
 function cleanupSocketTracking(socketId) {
   adminSockets.delete(socketId);
-  discordHomeNotified.delete(socketId);
+  discordHomeNotified.delete(`socket:${socketId}`);
 
   const previousEnterKey = socketEnterKey.get(socketId);
   if (previousEnterKey && previousEnterKey.startsWith('socket:')) {

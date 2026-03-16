@@ -76,8 +76,10 @@ function registerSocketHandlers(ctx) {
     emitAdmin();
 
     function notifyDiscordUserEntered(source, { recordId, clientId } = {}) {
-      if (discordHomeNotified.has(socket.id)) return;
-      discordHomeNotified.add(socket.id);
+      const normalizedClient = normalizeClientId(clientId || onlineUsers.get(socket.id)?.clientId);
+      const notifyKey = normalizedClient ? `client:${normalizedClient}` : `socket:${socket.id}`;
+      if (discordHomeNotified.has(notifyKey)) return;
+      discordHomeNotified.add(notifyKey);
       notifyDiscordHomeOnline({
         time: nowCN(),
         ip,
@@ -713,6 +715,7 @@ function registerSocketHandlers(ctx) {
       if (previousEnterKey && previousEnterKey.startsWith('socket:')) {
         enteredClientIds.delete(previousEnterKey);
       }
+      discordHomeNotified.delete(`socket:${socket.id}`);
       socketEnterKey.delete(socket.id);
       socket.emit('admin-update', {
         records: store.records,
@@ -729,6 +732,7 @@ function registerSocketHandlers(ctx) {
       }
 
       store.clear();
+      discordHomeNotified.clear();
       enteredClientIds.clear();
       submittedClientIds.clear();
       socketEnterKey.clear();
